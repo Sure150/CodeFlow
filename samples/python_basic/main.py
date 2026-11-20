@@ -1,11 +1,9 @@
-from helpers import normalize as normalize_text
+from controller.order_controller import build_report
 
 
-def normalize(value):
-    return value.upper()
+def main() -> None:
+    print(build_report())
 
 
-def format_message(value, callback):
-    cleaned = normalize_text(value)
-    display = normalize(cleaned)
-    return callback(display)
+if __name__ == "__main__":
+    main()
