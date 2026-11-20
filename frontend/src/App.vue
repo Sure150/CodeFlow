@@ -33,6 +33,7 @@ interface Analysis {
 const projectPath = ref('')
 const analysis = ref<Analysis | null>(null)
 const busy = ref(false)
+const picking = ref(false)
 const error = ref('')
 const search = ref('')
 const selectedId = ref('')
@@ -77,9 +78,31 @@ async function revealLine(line: number) {
   sourcePreview.value?.querySelector('.highlighted')?.scrollIntoView({ block: 'nearest' })
 }
 
+async function chooseDirectory() {
+  if (picking.value || busy.value) return
+
+  picking.value = true
+  error.value = ''
+  try {
+    const response = await fetch('/api/choose-directory', { method: 'POST' })
+    if (!response.ok) {
+      const body = await response.json().catch(() => null)
+      throw new Error(typeof body?.detail === 'string' ? body.detail : '无法打开文件夹选择窗口。')
+    }
+    const result: { path: string | null } = await response.json()
+    if (result.path) projectPath.value = result.path
+  } catch (cause) {
+    error.value = cause instanceof TypeError
+      ? '无法连接分析服务。请确认 FastAPI 后端已经启动。'
+      : cause instanceof Error ? cause.message : '选择文件夹失败'
+  } finally {
+    picking.value = false
+  }
+}
+
 async function scan() {
   const path = projectPath.value.trim()
-  if (!path || busy.value) return
+  if (!path || busy.value || picking.value) return
 
   busy.value = true
   error.value = ''
@@ -110,7 +133,6 @@ async function scan() {
 <template>
   <header class="topbar">
     <div class="brand"><span class="brand-icon" aria-hidden="true">⌘</span> CodeFlow</div>
-    <span class="topbar-label">Python 调用分析</span>
   </header>
 
   <main class="workspace">
@@ -121,9 +143,14 @@ async function scan() {
         <div class="scan-controls">
           <input
             id="project-path" v-model="projectPath" type="text" required maxlength="4096"
-            placeholder="samples/python_basic" spellcheck="false"
+            placeholder="samples/python_basic" spellcheck="false" :readonly="picking"
           />
-          <button type="submit" class="primary" :disabled="busy">{{ busy ? '扫描中…' : '扫描项目' }}</button>
+          <button type="button" class="secondary" :disabled="busy || picking" @click="chooseDirectory">
+            {{ picking ? '等待选择…' : '选择文件夹' }}
+          </button>
+          <button type="submit" class="primary" :disabled="busy || picking">
+            {{ busy ? '扫描中…' : '扫描项目' }}
+          </button>
         </div>
       </form>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
@@ -133,7 +160,6 @@ async function scan() {
         <span>{{ resolvedCount }} 个已解析调用</span>
         <span>{{ analysis.calls.length - resolvedCount }} 个未解析调用</span>
       </p>
-      <p v-else class="muted">输入后端所在机器上的目录路径，扫描其中的 Python 文件。</p>
       <details v-if="analysis?.warnings.length" class="warnings">
         <summary>{{ analysis.warnings.length }} 条扫描提示</summary>
         <ul><li v-for="(warning, index) in analysis.warnings" :key="index">{{ warning }}</li></ul>

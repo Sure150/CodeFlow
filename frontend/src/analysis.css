@@ -27,7 +27,6 @@ button:focus-visible, input:focus-visible, summary:focus-visible {
   color: #fff;
   display: flex;
   align-items: center;
-  justify-content: space-between;
 }
 
 .brand { display: flex; gap: 10px; align-items: center; font-weight: 700; }
@@ -40,7 +39,6 @@ button:focus-visible, input:focus-visible, summary:focus-visible {
   border-radius: 7px;
   color: #b9d4ff;
 }
-.topbar-label { color: #c9d5eb; font-size: .85rem; }
 .workspace { max-width: 1440px; margin: auto; padding: 32px clamp(16px, 5vw, 68px); }
 .project { margin-bottom: 22px; }
 h1 { font-size: clamp(1.65rem, 4vw, 2.15rem); margin: 0 0 20px; }
@@ -68,6 +66,16 @@ input {
   background: var(--accent);
   font-weight: 650;
 }
+.secondary {
+  flex: none;
+  border: 1px solid #b9c6d9;
+  border-radius: 7px;
+  padding: 9px 12px;
+  color: var(--accent);
+  background: white;
+  font-weight: 650;
+}
+.secondary:hover:not(:disabled) { background: #eaf1ff; }
 .muted, .summary { font-size: .85rem; color: var(--muted); }
 .summary { display: flex; gap: 8px 20px; flex-wrap: wrap; }
 .error { color: #a52527; }
@@ -137,6 +145,7 @@ pre { margin: 0; overflow: auto; padding: 10px 0; background: #f3f6fb; border-ra
 }
 
 @media (max-width: 460px) {
+  .scan-controls { flex-wrap: wrap; }
   .graph { grid-template-columns: minmax(0, 1fr); }
   .arrow { margin: 0; transform: rotate(90deg); justify-self: center; }
 }

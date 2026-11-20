@@ -29,7 +29,7 @@ npm ci
 npm run dev
 ```
 
-打开 Vite 输出的本地地址，在「项目目录」输入 `samples/python_basic` 并点击「扫描项目」。相对路径以 FastAPI 启动目录为基准。使用云端后端时，也可以直接输入云机器上的绝对路径。
+打开 Vite 输出的本地地址，点击「选择文件夹」，从系统窗口选中项目目录后再点击「扫描项目」。文件夹选择窗口在 FastAPI 所在的桌面上打开，需要 Python 的 Tkinter 组件。也可以直接输入 `samples/python_basic` 试用，相对路径以 FastAPI 启动目录为基准。后端运行在无桌面的云环境时，请手动输入云机器上的项目路径。
 
 样例中 `format_message` 调用了两个名为 `normalize` 的函数，分别位于 `main.py` 和 `helpers.py`。点击图中的函数可以查看源码和反向调用关系。回调 `callback` 会出现在「未解析调用点」里，点击可以定位该调用行。
 
