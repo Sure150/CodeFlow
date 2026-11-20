@@ -1,6 +1,6 @@
 # CodeFlow
 
-CodeFlow 面向本地项目的静态调用关系分析。当前版本提供 FastAPI 后端、Vue 3 + TypeScript 前端和服务连接检查。
+CodeFlow 静态分析 Python 项目。输入目录后，可以搜索函数、浏览直接调用关系并查看源码位置。分析过程只读取源码。
 
 ## 本地开发
 
@@ -23,17 +23,24 @@ npm ci
 npm run dev
 ```
 
-打开 Vite 输出的本地地址。页面显示「分析服务已连接」时，前端已通过 Vite 代理访问后端的 `GET /api/health`。在 `frontend/` 下运行 `npm run build` 可以执行类型检查并生成静态资源。
+打开 Vite 输出的本地地址，在「项目目录」输入 `samples/python_basic` 并点击「扫描项目」。相对路径以 FastAPI 启动目录为基准。使用云端后端时，也可以直接输入云机器上的绝对路径。
 
-## 分析模块规划
+样例中 `format_message` 调用了两个名为 `normalize` 的函数，分别位于 `main.py` 和 `helpers.py`。点击图中的函数可以查看源码和反向调用关系。回调 `callback` 会出现在「未解析调用点」里，点击可以定位该调用行。
 
-| 路径 | 职责 |
-| --- | --- |
-| `backend/app/scanner.py` | 只读枚举目标项目的源码 |
-| `backend/app/parsers/spring.py` | 接入 Java 分析器，提取方法调用、Spring 路由和注入线索 |
-| `backend/app/parsers/vue.py` | 接入 Vue 分析器，提取模板事件、脚本调用和 HTTP 请求 |
-| `backend/tools/java-analyzer/` | Java 和 Spring 静态分析工具 |
-| `backend/tools/vue-analyzer/` | Vue 单文件组件和 JavaScript / TypeScript 静态分析工具 |
-| `backend/app/analyzer.py` | 统一分析结果，将 Vue HTTP 请求匹配到 Spring 路由 |
+## 分析范围
 
-第一个分析样例计划验证从 Vue 按钮到 Spring Service 的链路，并为图中的每段关系保留源码位置。
+- 扫描 `.py` 文件，跳过常见的虚拟环境、缓存和构建目录，以及子目录中的符号链接。
+- 提取函数、方法、嵌套函数及其源码位置。用 AST 和符号表解析对模块级函数的直接调用，支持普通导入、导入别名和包内相对导入。
+- 动态回调、实例方法分派、第三方调用和其他无法确定的目标会保留为未解析调用点。首版统计函数体内的调用。模块路径以扫描目录推导，`src` 布局可直接扫描 `src/`。
+- 语法错误、读取失败和扫描截断会出现在扫描提示中。
+- 使用适合扫描当前机器文件的本机开发模式。前端通过 Vite 代理调用 `POST /api/analyze`，请求体为 `{"path":"samples/python_basic"}`。FastAPI 默认由上述命令绑定到环回地址。
+
+## 验证
+
+激活虚拟环境并在仓库根目录运行后端测试。
+
+```sh
+python -m unittest discover -s backend/tests -v
+```
+
+在 `frontend/` 下运行 `npm run build` 完成类型检查和构建。
