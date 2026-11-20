@@ -31,6 +31,8 @@ npm run dev
 
 打开 Vite 输出的本地地址，点击「选择文件夹」，从系统窗口选中项目目录后再点击「扫描项目」。文件夹选择窗口在 FastAPI 所在的桌面上打开，需要 Python 的 Tkinter 组件。也可以直接输入 `samples/python_basic` 试用，相对路径以 FastAPI 启动目录为基准。后端运行在无桌面的云环境时，请手动输入云机器上的项目路径。
 
+扫描后，「项目结构」会将各目录显示为可折叠的圆角框，并在框内展示子目录和已分析的 Python 文件。点击文件可以查看其中的函数，再选择函数查看调用关系和源码。
+
 ### 分层订单示例
 
 `samples/python_basic` 只用 Python 标准库。在仓库根目录运行 `python samples/python_basic/main.py` 可以查看报表。

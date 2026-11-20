@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
+import ProjectTree from './ProjectTree.vue'
+import { buildProjectTree } from './projectTree'
 import './analysis.css'
 
 interface PythonSymbol {
@@ -36,16 +38,20 @@ const busy = ref(false)
 const picking = ref(false)
 const error = ref('')
 const search = ref('')
+const fileFilter = ref<string | null>(null)
 const selectedId = ref('')
 const highlightedLine = ref<number | null>(null)
 const sourcePreview = ref<HTMLPreElement | null>(null)
 
 const symbolIndex = computed(() => new Map(analysis.value?.symbols.map(symbol => [symbol.id, symbol])))
 const selected = computed(() => symbolIndex.value.get(selectedId.value))
+const projectTree = computed(() => buildProjectTree(analysis.value?.files ?? []))
+const activeFile = computed(() => fileFilter.value ?? selected.value?.file ?? '')
 const visibleSymbols = computed(() => {
   const query = search.value.trim().toLowerCase()
   return (analysis.value?.symbols ?? []).filter(symbol =>
-    `${symbol.file} ${symbol.qualified_name}`.toLowerCase().includes(query),
+    (!fileFilter.value || symbol.file === fileFilter.value)
+    && `${symbol.file} ${symbol.qualified_name}`.toLowerCase().includes(query),
   )
 })
 const outgoing = computed(() => (analysis.value?.calls ?? []).filter(call => call.caller === selectedId.value))
@@ -67,9 +73,20 @@ const callers = computed(() => linkedSymbols(incoming.value.map(call => call.cal
 const callees = computed(() => linkedSymbols(outgoing.value.map(call => call.target)))
 
 function selectSymbol(id: string) {
+  const symbol = symbolIndex.value.get(id)
+  if (fileFilter.value && symbol && symbol.file !== fileFilter.value) {
+    fileFilter.value = symbol.file
+    search.value = ''
+  }
   selectedId.value = id
   highlightedLine.value = null
   if (sourcePreview.value) sourcePreview.value.scrollTop = 0
+}
+
+function selectFile(path: string) {
+  fileFilter.value = path
+  search.value = ''
+  selectSymbol(analysis.value?.symbols.find(symbol => symbol.file === path)?.id ?? '')
 }
 
 async function revealLine(line: number) {
@@ -119,6 +136,7 @@ async function scan() {
     const result: Analysis = await response.json()
     analysis.value = result
     search.value = ''
+    fileFilter.value = null
     selectSymbol(result.calls.find(call => call.status === 'resolved')?.caller ?? result.symbols[0]?.id ?? '')
   } catch (cause) {
     error.value = cause instanceof TypeError
@@ -166,9 +184,23 @@ async function scan() {
       </details>
     </section>
 
-    <div v-if="analysis?.symbols.length && selected" class="analysis-layout">
+    <section v-if="analysis?.files.length" class="panel project-structure" aria-labelledby="structure-title">
+      <h2 id="structure-title">项目结构</h2>
+      <ProjectTree
+        :key="analysis.root"
+        :directory="projectTree"
+        :active-file="activeFile"
+        @select-file="selectFile"
+      />
+    </section>
+
+    <div v-if="analysis?.files.length" class="analysis-layout">
       <aside class="panel explorer" aria-label="函数列表">
-        <h2>函数</h2>
+        <div class="explorer-heading">
+          <h2>函数</h2>
+          <button v-if="fileFilter" class="all-files" type="button" @click="fileFilter = null">全部文件</button>
+        </div>
+        <p v-if="fileFilter" class="file-filter">{{ fileFilter }}</p>
         <input v-model="search" type="search" placeholder="搜索函数或文件" aria-label="搜索函数或文件" />
         <ul class="symbols">
           <li v-for="symbol in visibleSymbols" :key="symbol.id">
@@ -178,10 +210,12 @@ async function scan() {
             </button>
           </li>
         </ul>
-        <p v-if="!visibleSymbols.length" class="muted">没有匹配的函数。</p>
+        <p v-if="!visibleSymbols.length" class="muted">
+          {{ search ? '没有匹配的函数。' : '没有可展示的函数或方法。' }}
+        </p>
       </aside>
 
-      <div class="details">
+      <div v-if="selected" class="details">
         <section class="panel" aria-labelledby="graph-title">
           <h2 id="graph-title">直接调用关系</h2>
           <div class="graph">
@@ -239,7 +273,10 @@ async function scan() {
           <p v-if="selected.source_truncated" class="muted">源码预览已截断。</p>
         </section>
       </div>
+      <div v-else class="panel graph-empty" role="status">
+        {{ fileFilter ? '请从项目结构中选择其他文件。' : '选择函数后可查看调用关系和源码。' }}
+      </div>
     </div>
-    <div v-else-if="analysis" class="panel" role="status">目录中没有可展示的 Python 函数或方法。</div>
+    <div v-else-if="analysis" class="panel" role="status">目录中没有可展示的 Python 文件。</div>
   </main>
 </template>

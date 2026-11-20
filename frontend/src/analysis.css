@@ -82,10 +82,16 @@ input {
 .warnings { color: #815000; font-size: .85rem; overflow-wrap: anywhere; }
 summary { cursor: pointer; }
 
+.project-structure { margin-bottom: 16px; }
 .analysis-layout { display: grid; grid-template-columns: minmax(180px, 245px) minmax(0, 1fr); gap: 16px; }
 .panel { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }
 .details { display: grid; gap: 16px; align-content: start; min-width: 0; }
 .explorer { align-self: start; }
+.explorer-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.all-files { border: 0; padding: 3px; background: transparent; color: var(--accent); font-size: .8rem; }
+.all-files:hover { text-decoration: underline; }
+.file-filter { margin: -6px 0 10px; color: var(--muted); font: .78rem ui-monospace, monospace; overflow-wrap: anywhere; }
+.graph-empty { align-self: start; color: var(--muted); }
 .symbols { padding: 0; margin: 10px 0 0; list-style: none; max-height: 64vh; overflow: auto; }
 .symbols button, .node {
   width: 100%;
