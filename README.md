@@ -2,18 +2,24 @@
 
 CodeFlow 静态分析 Python 项目。输入目录后，可以搜索函数、浏览直接调用关系并查看源码位置。分析过程只读取源码。
 
+## Windows 一键启动
+
+安装 Python 3.11+ 和 Node.js 22.12+（含 npm）后，双击仓库根目录的 `start.bat`。启动器会使用现有的 `backend/.venv`，首次没有虚拟环境时会自动创建。首次准备依赖时需要联网。前后端就绪后，启动器会打开 `http://127.0.0.1:5173/`。
+
+在页面输入 `samples/python_basic` 即可试用。要停止服务，关闭「CodeFlow Backend」和「CodeFlow Frontend」两个窗口。
+
 ## 本地开发
 
 需要 Python 3.11+ 和 Node.js 22.12+。在仓库根目录启动后端。
 
 ```sh
-python -m venv .venv
-source .venv/bin/activate
+python -m venv backend/.venv
+source backend/.venv/bin/activate
 python -m pip install -e ./backend
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8765 --reload --reload-dir backend
 ```
 
-Windows PowerShell 使用 `.\.venv\Scripts\Activate.ps1` 激活虚拟环境。
+Windows PowerShell 使用 `.\backend\.venv\Scripts\Activate.ps1` 激活虚拟环境。
 
 另开一个终端启动前端。
 
