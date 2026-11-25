@@ -97,6 +97,29 @@ class AnalysisTests(unittest.TestCase):
             "self.finish": (symbols["Worker.run"], None),
         })
 
+    def test_class_ownership_tracks_nested_classes_and_functions(self):
+        self.write("main.py", """
+            def helper(): pass
+
+            class Worker:
+                class Task:
+                    def run(self):
+                        def inner():
+                            helper()
+
+            class Empty:
+                pass
+        """)
+        result = analyze_python(self.root)
+        classes = {item.name: item for item in result.classes}
+        symbols = {symbol.qualified_name: symbol for symbol in result.symbols}
+        self.assertEqual(set(classes), {"Worker", "Task"})
+        self.assertIsNone(classes["Worker"].parent_id)
+        self.assertEqual(classes["Task"].parent_id, classes["Worker"].id)
+        self.assertEqual(symbols["Worker.Task.run"].class_id, classes["Task"].id)
+        self.assertEqual(symbols["Worker.Task.run.inner"].class_id, classes["Task"].id)
+        self.assertIsNone(symbols["helper"].class_id)
+
     def test_skips_other_languages_venvs_and_syntax_errors_without_executing_code(self):
         self.write("healthy.py", """
             raise RuntimeError("analyzed only")

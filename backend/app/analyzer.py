@@ -1,6 +1,6 @@
 import ast
 from collections import Counter, defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib.util import resolve_name
 from pathlib import Path
 from symtable import SymbolTable
@@ -21,6 +21,15 @@ class Symbol:
     end_line: int
     source: str
     source_truncated: bool
+    class_id: str | None = None
+
+
+@dataclass
+class PythonClass:
+    id: str
+    name: str
+    file: str
+    parent_id: str | None
 
 
 @dataclass
@@ -40,6 +49,7 @@ class Analysis:
     symbols: list[Symbol]
     calls: list[Call]
     warnings: list[str]
+    classes: list[PythonClass] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -99,7 +109,7 @@ class ModuleBindings(ast.NodeVisitor):
         pass
 
 
-def symbol_id(file: PythonFile, node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
+def definition_id(file: PythonFile, node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef) -> str:
     return f"{file.path}:{node.lineno}:{node.col_offset}"
 
 
@@ -126,7 +136,7 @@ class ModuleIndex:
         for statement in file.tree.body:
             if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if not statement.decorator_list and bindings.names[statement.name] == 1:
-                    self.functions[file.module][statement.name] = symbol_id(file, statement)
+                    self.functions[file.module][statement.name] = definition_id(file, statement)
             elif isinstance(statement, ast.Import):
                 for alias in statement.names:
                     base, *attributes = alias.name.split(".")
@@ -198,11 +208,17 @@ class FileAnalyzer(ast.NodeVisitor):
         self.scope: SymbolTable | None = file.scope
         self.owner: str | None = None
         self.parents: list[str] = []
+        self.classes: list[PythonClass] = []
+        self.indexed_classes: set[str] = set()
 
     def visit_FunctionDef(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
         if len(self.result.symbols) >= MAX_SYMBOLS:
             return
-        owner = symbol_id(self.file, node)
+        owner = definition_id(self.file, node)
+        for container in self.classes:
+            if container.id not in self.indexed_classes:
+                self.indexed_classes.add(container.id)
+                self.result.classes.append(container)
         end_line = node.end_lineno or node.lineno
         last_preview_line = min(end_line, node.lineno + 119)
         source = "\n".join(self.file.lines[node.lineno - 1:last_preview_line])
@@ -210,13 +226,19 @@ class FileAnalyzer(ast.NodeVisitor):
             owner, node.name, ".".join([*self.parents, node.name]),
             self.file.path, node.lineno, end_line, source[:4_000],
             last_preview_line < end_line or len(source) > 4_000,
+            self.classes[-1].id if self.classes else None,
         ))
         self.visit_body(node, owner)
 
     visit_AsyncFunctionDef = visit_FunctionDef
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        self.classes.append(PythonClass(
+            definition_id(self.file, node), node.name, self.file.path,
+            self.classes[-1].id if self.classes else None,
+        ))
         self.visit_body(node, None)
+        self.classes.pop()
 
     def visit_body(self, node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
                    owner: str | None) -> None:
@@ -266,11 +288,13 @@ def analyze_python(root: Path) -> Analysis:
     index = ModuleIndex(files, result.warnings)
     for file in files:
         symbol_count, call_count = len(result.symbols), len(result.calls)
+        class_count = len(result.classes)
         try:
             FileAnalyzer(file, index, result).visit(file.tree)
         except RecursionError:
             del result.symbols[symbol_count:]
             del result.calls[call_count:]
+            del result.classes[class_count:]
             result.warnings.append(f"{file.path}：语法嵌套过深，已跳过")
 
     symbol_ids = {symbol.id for symbol in result.symbols}
